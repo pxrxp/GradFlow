@@ -6,7 +6,7 @@ from gradflow.nn.layer import Layer
 class MLP(Module):
     def __init__(self, n_inputs: int, layer_outputs: List[int]):
         layer_sizes = [n_inputs] + layer_outputs
-        self.layers = [Layer(layer_sizes[i], layer_sizes[i+1], nonlin=(i!=len(layer_outputs)-1)) for i in range(len(layer_outputs))]
+        self.layers = [Layer(layer_sizes[i], layer_sizes[i+1], use_nonlinear=(i!=len(layer_outputs)-1)) for i in range(len(layer_outputs))]
 
     def __call__(self, x: Union[List, Tensor]) -> Tensor:
         for layer in self.layers:
