@@ -22,10 +22,6 @@ class Tensor:
     def shape(self) -> Tuple[int, ...]:
         return self._shape
 
-    # Examples:
-    # 1 -> Value(1)
-    # [1, 2, 3] -> [Value(1), Value(2), Value(3)]
-    # [[1, 2], [3, 4]] -> [[Value(1), Value(2)], [Value(3), Value(4)]]
     def _to_value_grid(self, data: Union[List, float, Value]) -> Union[Value, List]:
         if isinstance(data, (int, float)):
             return Value(float(data))
@@ -35,11 +31,6 @@ class Tensor:
             return data
         return data
 
-    # Examples:
-    # 1 -> ()
-    # [1, 2, 3] -> (3,)
-    # [[1, 2], [3, 4]] -> (2, 2)
-    # [[[1, 2], [3, 4]], [[5, 6], [7, 8]]] -> (2, 2, 2)
     def _get_shape(self, data: Union[List, int, float, Value]) -> Tuple[int, ...]:
         if isinstance(data, (int, float, Value)):
             return ()
@@ -113,12 +104,9 @@ class Tensor:
 
     def backward(self) -> None:
         flat = self._flatten(self.data)
-        assert len(flat) == 1   # Only works for single Value objects
-                                # If output is a list of Value objects, 
-                                # we'd need Jacobian
+        assert len(flat) == 1
         flat[0].backward()
 
-    # To be able to zero out the gradients to prevent accumulation
     def zero_grad(self) -> None:
         for v in self._flatten(self.data):
             v.grad = 0

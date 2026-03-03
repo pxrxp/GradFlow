@@ -48,6 +48,7 @@ class Value:
     def zero_grad(self) -> None:
         self.grad = 0
 
+    # Sort nodes to ensure dependencies are computed before their users
     def backward(self) -> None:
         topo: List['Value'] = []
         visited: Set['Value'] = set()
