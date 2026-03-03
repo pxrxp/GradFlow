@@ -287,6 +287,14 @@ The method of computing gradients $(\nabla L)$ defines the variant of the algori
 
 **Current Implementation**: Our `demo.ipynb` uses **Batch Gradient Descent**. We compute the total loss for all clinical samples and update the weights once per epoch. This is distinct from Stochastic Gradient Descent (SGD), which would update weights after every individual sample.
 
+### 7.6 Feature Scaling (Normalization)
+Gradient Descent is sensitive to the scale of input features. Features with large magnitudes (e.g., `radius_mean` $\approx 20$) produce significantly larger gradients than small ones (e.g., `smoothness_mean` $\approx 0.1$), leading to **divergence** or inefficient "zig-zag" optimization.
+
+**Z-score Normalization**:
+We transform each feature $x$ using its mean ($\mu$) and standard deviation ($\sigma$):
+$$x_{norm} = \frac{x - \mu}{\sigma}$$
+This ensures all inputs are centered at 0 with a unit variance, creating a more spherical and easily optimizable loss surface.
+
 ---
 
 ## 8. Training Workflow (`demo.ipynb`)
