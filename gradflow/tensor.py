@@ -3,8 +3,20 @@ from gradflow.engine import Value
 
 class Tensor:
     def __init__(self, data: Union[List, float, Value]):
-        self.data: Union[Value, List] = self._to_value_grid(data)
-        self.shape: Tuple[int, ...] = self._get_shape(data)
+        self.data = data
+
+    @property
+    def data(self) -> Union[Value, List]:
+        return self._data
+
+    @data.setter
+    def data(self, value: Union[List, float, Value]):
+        self._data = to_value_grid(value)
+        self._shape = get_shape(value)
+
+    @property
+    def shape(self) -> Tuple[int, ...]:
+        return self._shape
 
     def _to_value_grid(self, data: Union[List, float, Value]) -> Union[Value, List]:
         if isinstance(data, (int, float)):
