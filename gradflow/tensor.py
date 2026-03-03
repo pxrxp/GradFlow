@@ -20,6 +20,9 @@ class Tensor:
             return (len(data),) + self._get_shape(data[0])
         return ()
 
+    def __getitem__(self, idx: int) -> Union[Value, List]:
+        return self.data[idx]
+
     def __add__(self, other: "Tensor") -> "Tensor":
         assert self.shape == other.shape
         return Tensor(self._op(self.data, other.data, lambda x, y: x + y))
@@ -39,6 +42,40 @@ class Tensor:
         if isinstance(a, list):
             return [self._map(ai, fn) for ai in a]
         return fn(a)
+
+    def T(self) -> "Tensor":
+        assert len(self.shape) == 2
+        res = [[self.data[j][i] for j in range(self.shape[0])] for i in range(self.shape[1])]
+        return Tensor(res)
+
+    def matmul(self, other: "Tensor") -> "Tensor":
+        assert len(self.shape) == 2 and len(other.shape) == 2
+        assert self.shape[1] == other.shape[0]
+        res = []
+        for i in range(self.shape[0]):
+            row = []
+            for j in range(other.shape[1]):
+                dot = Value(0.0)
+                for k in range(self.shape[1]):
+                    dot += self.data[i][k] * other.data[k][j]
+                row.append(dot)
+            res.append(row)
+        return Tensor(res)
+
+    def sum(self) -> "Tensor":
+        flat = self._flatten(self.data)
+        res = Value(0.0)
+        for x in flat:
+            res += x
+        return Tensor(res)
+
+    def _flatten(self, a: Union[Value, List]) -> List[Value]:
+        if isinstance(a, list):
+            res: List[Value] = []
+            for item in a:
+                res.extend(self._flatten(item))
+            return res
+        return [a]
 
     def __repr__(self) -> str:
         return f"Tensor(data={self.data}, shape={self.shape})"
