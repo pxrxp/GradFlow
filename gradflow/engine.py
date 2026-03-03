@@ -1,3 +1,5 @@
+import math
+
 class Value:
     def __init__(self, data, _parents=(), _op=''):
         self.data = data
@@ -25,6 +27,50 @@ class Value:
             other.grad += self.data * out.grad
         out._backward = _backward
         return out
+
+    # self ** other
+    def __pow__(self, other):
+        assert isinstance(other, (int, float))
+        out = Value(self.data**other, (self,), f'^{other}')
+        def _backward():
+            self.grad += (other * self.data**(other - 1)) * out.grad
+        out._backward = _backward
+        return out
+
+    def relu(self):
+        out = Value(0 if self.data < 0 else self.data, (self,), 'ReLU')
+        def _backward():
+            self.grad += (out.data > 0) * out.grad
+        out._backward = _backward
+        return out
+
+    # -self
+    def __neg__(self):
+        return self * -1
+
+    # other + self
+    def __radd__(self, other):
+        return self + other
+
+    # self - other
+    def __sub__(self, other):
+        return self + (-other)
+
+    # other - self
+    def __rsub__(self, other):
+        return Value(other) + (-self)
+
+    # other * self
+    def __rmul__(self, other):
+        return self * other
+
+    # self / other
+    def __truediv__(self, other):
+        return self * other**-1
+
+    # other / self
+    def __rtruediv__(self, other):
+        return Value(other) * self**-1
 
     def __repr__(self):
         return f"Value(data={self.data}, grad={self.grad})"
