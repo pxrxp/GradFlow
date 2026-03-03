@@ -5,3 +5,6 @@ __pycache__/
 env/
 venv/
 ENV/
+.ipynb_checkpoints
+gradflow/__pycache__
+gradflow/nn/__pycache__
