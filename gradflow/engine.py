@@ -45,6 +45,9 @@ class Value:
         out._backward = _backward
         return out
 
+    def zero_grad(self) -> None:
+        self.grad = 0
+
     def backward(self) -> None:
         topo: List['Value'] = []
         visited: Set['Value'] = set()

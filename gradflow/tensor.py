@@ -27,7 +27,7 @@ class Tensor:
             return data
         return data
 
-    def _get_shape(self, data: Union[List, float, Value]) -> Tuple[int, ...]:
+    def _get_shape(self, data: Union[List, int, float, Value]) -> Tuple[int, ...]:
         if isinstance(data, (int, float, Value)):
             return ()
         if isinstance(data, list):
@@ -97,6 +97,10 @@ class Tensor:
         flat = self._flatten(self.data)
         assert len(flat) == 1
         flat[0].backward()
+
+    def zero_grad(self) -> None:
+        for v in self._flatten(self.data):
+            v.grad = 0
 
     @property
     def grad(self) -> Union[float, List]:
