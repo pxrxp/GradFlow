@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple, Callable
+from typing import List, Union, Tuple, Callable, Any
 from gradflow.engine import Value
 
 class Tensor:
@@ -11,6 +11,8 @@ class Tensor:
             return Value(float(data))
         if isinstance(data, list):
             return [self._to_value_grid(d) for d in data]
+        if isinstance(data, Value):
+            return data
         return data
 
     def _get_shape(self, data: Union[List, float, Value]) -> Tuple[int, ...]:
@@ -36,7 +38,9 @@ class Tensor:
     def _op(self, a: Union[Value, List], b: Union[Value, List], fn: Callable[[Value, Value], Value]) -> Union[Value, List]:
         if isinstance(a, list) and isinstance(b, list):
             return [self._op(ai, bi, fn) for ai, bi in zip(a, b)]
-        return fn(a, b)
+        if isinstance(a, Value) and isinstance(b, Value):
+            return fn(a, b)
+        raise ValueError("Shape mismatch")
 
     def _map(self, a: Union[Value, List], fn: Callable[[Value], Value]) -> Union[Value, List]:
         if isinstance(a, list):
@@ -76,6 +80,20 @@ class Tensor:
                 res.extend(self._flatten(item))
             return res
         return [a]
+
+    def backward(self) -> None:
+        flat = self._flatten(self.data)
+        assert len(flat) == 1
+        flat[0].backward()
+
+    @property
+    def grad(self) -> Union[float, List]:
+        return self._map_grad(self.data)
+
+    def _map_grad(self, a: Union[Value, List]) -> Union[float, List]:
+        if isinstance(a, list):
+            return [self._map_grad(ai) for ai in a]
+        return a.grad
 
     def __repr__(self) -> str:
         return f"Tensor(data={self.data}, shape={self.shape})"
