@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Callable
 from gradflow.engine import Value
 
 class Tensor:
@@ -19,6 +19,26 @@ class Tensor:
         if isinstance(data, list):
             return (len(data),) + self._get_shape(data[0])
         return ()
+
+    def __add__(self, other: "Tensor") -> "Tensor":
+        assert self.shape == other.shape
+        return Tensor(self._op(self.data, other.data, lambda x, y: x + y))
+
+    def __mul__(self, other: Union["Tensor", float, Value]) -> "Tensor":
+        if isinstance(other, (int, float, Value)):
+            return Tensor(self._map(self.data, lambda x: x * other))
+        assert self.shape == other.shape
+        return Tensor(self._op(self.data, other.data, lambda x, y: x * y))
+
+    def _op(self, a: Union[Value, List], b: Union[Value, List], fn: Callable[[Value, Value], Value]) -> Union[Value, List]:
+        if isinstance(a, list) and isinstance(b, list):
+            return [self._op(ai, bi, fn) for ai, bi in zip(a, b)]
+        return fn(a, b)
+
+    def _map(self, a: Union[Value, List], fn: Callable[[Value], Value]) -> Union[Value, List]:
+        if isinstance(a, list):
+            return [self._map(ai, fn) for ai in a]
+        return fn(a)
 
     def __repr__(self) -> str:
         return f"Tensor(data={self.data}, shape={self.shape})"
