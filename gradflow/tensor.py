@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple, Callable, Any
+from typing import List, Union, Tuple, Callable
 from gradflow.engine import Value
 
 class Tensor:
@@ -14,8 +14,8 @@ class Tensor:
     # self.data = value
     @data.setter
     def data(self, value: Union[List, float, Value]):
-        self._data = to_value_grid(value)
-        self._shape = get_shape(value)
+        self._data = self._to_value_grid(value)
+        self._shape = self._get_shape(value)
 
     # self.shape
     @property
@@ -54,6 +54,9 @@ class Tensor:
         assert self.shape == other.shape
         return Tensor(self._op(self.data, other.data, lambda x, y: x * y))
 
+    def relu(self) -> "Tensor":
+        return Tensor(self._map(self.data, lambda x: x.relu()))
+
     # Apply an operation to two tensors
     def _op(self, a: Union[Value, List], b: Union[Value, List], fn: Callable[[Value, Value], Value]) -> Union[Value, List]:
         if isinstance(a, list) and isinstance(b, list):
@@ -73,7 +76,8 @@ class Tensor:
         res = [[self.data[j][i] for j in range(self.shape[0])] for i in range(self.shape[1])]
         return Tensor(res)
 
-    def matmul(self, other: "Tensor") -> "Tensor":
+    # self @ other
+    def __matmul__(self, other: "Tensor") -> "Tensor":
         assert len(self.shape) == 2 and len(other.shape) == 2  # Tensors must be matrices
         assert self.shape[1] == other.shape[0]                 # Mat1: (m, n), Mat2: (n, p) -> Result: (m, p)
         res = []
