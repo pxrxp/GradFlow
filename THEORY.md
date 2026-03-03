@@ -308,14 +308,14 @@ A typical training iteration follows these concrete steps:
 
 ### 8.2 Loss and Backprop
 1. **Forward**: `predictions = [model(x) for x in features]` (List of Tensors).
-2. **MSE Loss**: $L = \frac{1}{n} \sum (prediction - target\_label)^2$. This produces a single `Value` node.
+2. **MSE Loss**: $L = \frac{1}{n} \sum (prediction - y_{target})^2$. This produces a single `Value` node.
 3. **Backward**: `loss.backward()` triggers:
    - Topological sort of the entire scalar graph.
    - Recursive call to every node's `_backward()` function.
 
 ### 8.3 Batch Gradient Descent Update
 The model's `parameters()` method provides a flat list of all learnable Tensors. We iterate through this list to update the underlying `Value` objects using the Batch average:
-$$Value.data = Value.data - \text{learning\_rate} \cdot Value.grad$$
+$$Value.data = Value.data - \eta \cdot Value.grad$$
 
 ```mermaid
 graph TD
