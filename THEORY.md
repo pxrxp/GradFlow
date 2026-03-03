@@ -120,7 +120,8 @@ graph TD
 #### `_flatten(a)`
 Flattens the nested grid into a 1D list of `Value` objects for aggregation.
 
-```graph TD
+```mermaid
+graph TD
     F["[[v1, v2], [v3, v4]]"] -- split --> F1["[v1, v2]"]
     F1 -- split --> v1["v1"]
     F1 -- split --> v2["v2"]
@@ -139,7 +140,7 @@ These methods handle recursive traversal of the tensor grid to apply functions a
 
 #### `_op(a, b, fn)`
 Traverses two grids of identical shape and applies a binary function.
-- **Used by**: `+`, `-` (via add/neg), `*` (element-wise), `/` (via mul/inv).
+- **Used by**: `sum`, `+`, `-` (via add/neg), `*` (element-wise), `/` (via mul/inv).
 - **Example**: $[a1, a2] + [b1, b2] \rightarrow [a1+b1, a2+b2]$
 
 ```mermaid
@@ -186,3 +187,133 @@ This reduces the high-dimensional tensor to a single `Value` node representing t
 
 > [!NOTE]
 > Backpropagation currently only supports scalar outputs. If the output were a vector or matrix, we would need to compute the Jacobian, which is not yet implemented.
+
+## 6. Neural Network Components
+
+The `nn` package builds a hierarchy from scalar values back up to multidimensional tensors.
+
+### 6.1 `Neuron`
+A neuron calculates a weighted sum of inputs and adds a bias.
+
+**Forward Pass**: $out = \text{ReLU}(\sum_{i=1}^{n} w_i x_i + b)$
+
+![Perceptron](https://hvidberrrg.github.io/deep_learning/assets/activation_function_diagram.png)
+![Activation Functions](https://i.sstatic.net/itkXP.png)
+
+**Key Step**: The `.sum()` operation on the `Tensor` converts the multidimensional grid into a single `Value` node, which is then tracked by the engine.
+
+**Parameters**: Each neuron stores its own weights (`w`) and bias (`b`) as learnable `Tensor` objects. The `parameters()` method returns `[self.w, self.b]`.
+
+### 6.2 `Layer`
+A layer is a collection of neurons processing the same input in parallel.
+
+![Layer](https://media.springernature.com/lw685/springer-static/image/chp%3A10.1007%2F978-1-4842-9532-8_9/MediaObjects/336498_3_En_9_Fig6_HTML.png)
+
+- **Input**: `x` (Tensor)
+
+- **Mechanism**: `[n1(x), n2(x), ...]`
+
+- **Output**: Returns a `Tensor` wrapping the scalar `Value` outputs from each neuron.
+
+- **Parameters**: Aggregates parameters from every neuron in the layer: `[parameter for n in self.neurons for parameter in n.parameters()]`.
+
+### 6.3 `MLP`
+A Multi-Layer Perceptron is a sequence of layers.
+
+- **Mechanism**: `y = ...(L3(L2(L1(x))))`
+
+- **Parameters**: Collected recursively through the hierarchy:
+
+```mermaid
+graph TD
+    MLP_P["MLP.parameters()"] --> L1_P["Layer 1.parameters()"]
+    MLP_P --> LN_P["..."]
+    L1_P --> N11_P["Neuron 1.1.parameters()"]
+    L1_P --> N1M_P["..."]
+    N11_P --> W["Weight Tensor (w)"]
+    N11_P --> B["Bias Tensor (b)"]
+```
+
+## 7. Learning Principles
+
+### 7.1 The Objective: Minimizing Loss ($L$)
+In supervised learning, we seek a function $f(x; \theta)$ that maps inputs $x$ to targets $y$. The "Loss" $L$ is a metric that quantifies the error over our dataset. 
+
+**Why Minimize?**
+Minimizing $L$ is synonymous with maximizing the accuracy of our model's predictions. We use the **Mean Squared Error (MSE)** as our objective function:
+$$L = \frac{1}{n} \cdot \sum_{i=1}^n (f(x_i; \theta) - y_i)^2$$
+As $L \to 0$, the model's predictions $f(x)$ converge to the ground truth.
+
+### 7.2 Gradient Descent Optimization
+![Gradient Descent](https://infolia.ai/images/newsletters/newsletter-798e7803-ce2b-47bb-851f-34db6a2f5bf2.png)
+Optimization calculates the necessary "nudges" to parameters $(\theta)$ to find the global minimum of the loss surface.
+
+**The Update Rule**:
+$$\theta_{next} = \theta_{now} - \eta \cdot \frac{\partial L}{\partial \theta}$$
+
+### 7.3 Hyperparameters: Learning Rate ($\eta$)
+The learning rate $\eta$ is the step size taken along the gradient.
+
+| Setting | Mathematical Effect | Consequence |
+| :--- | :--- | :--- |
+| **High Step** | Step size exceeds valley width | **Divergence**: The loss value explodes or oscillates. |
+| **Low Step** | Step size approaches zero | **Vanishing**: High computational cost, trapped in local minima. |
+| **Optimal** | Smooth reduction in $L$ | **Convergence**: Efficient descent toward the minimum. |
+
+![Learning Rate Visualization](https://saugatbhattarai.com.np/wp-content/uploads/2018/06/learning-rate-gradient-descent.jpg)
+
+### 7.4 Model Capacity & Fit
+We judge a model by its ability to generalize to unseen data ($\text{Error}_{test}$), governed by the **Bias-Variance Tradeoff**.
+
+1.  **Underfitting (High Bias)**: 
+    - **Context**: The model is too simple to capture the underlying pattern.
+    - **Math**: $\text{Loss}_{train}$ and $\text{Loss}_{test}$ remain high.
+2.  **Overfitting (High Variance)**: 
+    - **Context**: The model "memorizes" noise rather than the signal.
+    - **Math**: $\text{Loss}_{train} \ll \text{Loss}_{test}$.
+
+![Overfitting vs Underfitting](https://upload.wikimedia.org/wikipedia/commons/1/19/Overfitting.svg)
+
+### 7.5 Gradient Descent Variants
+The method of computing gradients $(\nabla L)$ defines the variant of the algorithm.
+
+| Variant | Dataset used per step | Gradient Formula | Convergence |
+| :--- | :--- | :--- | :--- |
+| **Batch GD** | Entire dataset | $\frac{1}{N} \sum_{i=1}^N \nabla L_i$ | **Stable**: Guaranteed local convergence. |
+| **Stochastic GD** | Single random example | $\nabla L_i$ | **Noisy**: High variance, avoids local minima. |
+| **Mini-batch GD** | Small random subset | $\frac{1}{b} \sum_{i=1}^b \nabla L_i$ | **Optimal**: Best of both worlds; GPU-efficient. |
+
+![Gradient Descent Variants](https://cdn.analyticsvidhya.com/wp-content/uploads/2022/07/58182variations_comparison.webp)
+
+**Current Implementation**: Our `demo.ipynb` uses **Batch Gradient Descent**. We compute the total loss for all clinical samples and update the weights once per epoch. This is distinct from Stochastic Gradient Descent (SGD), which would update weights after every individual sample.
+
+---
+
+## 8. Training Workflow (`demo.ipynb`)
+
+A typical training iteration follows these concrete steps:
+
+### 8.1 Data Processing
+1. **Load**: `read_csv` returns `List[Dict]`.
+2. **Format**: Features extracted to `features` (List of Lists), labels to `labels` (List of floats).
+3. **Wrap**: Features are wrapped in `Tensor` during `model(x)`.
+
+### 8.2 Loss and Backprop
+1. **Forward**: `predictions = [model(x) for x in features]` (List of Tensors).
+2. **MSE Loss**: $L = \frac{1}{n} \sum (prediction - target\_label)^2$. This produces a single `Value` node.
+3. **Backward**: `loss.backward()` triggers:
+   - Topological sort of the entire scalar graph.
+   - Recursive call to every node's `_backward()` function.
+
+### 8.3 Batch Gradient Descent Update
+The model's `parameters()` method provides a flat list of all learnable Tensors. We iterate through this list to update the underlying `Value` objects using the Batch average:
+$$Value.data = Value.data - \text{learning\_rate} \cdot Value.grad$$
+
+```mermaid
+graph TD
+    Parameters["MLP.parameters()"] --> T1["Tensor (w or b)"]
+    T1 --> V1["Value.data -= learning_rate * grad"]
+    T1 --> V2["Value.data -= learning_rate * grad"]
+    Parameters --> T2["..."]
+```
+**Note**: We use `model.zero_grad()` at the start of each loop to reset `Value.grad = 0`, as gradients accumulate via `+=` in the engine.
