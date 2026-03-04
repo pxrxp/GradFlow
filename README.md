@@ -26,13 +26,40 @@ A modular hierarchy for constructing deep architectures:
 
 ## Practical Application: Breast Cancer Diagnosis
 
-The project includes a clinical classification demonstration in [demo.ipynb](demo.ipynb). It utilizes a real-world medical dataset ([medical_data.csv](medical_data.csv)) to train a model for malignant vs. benign diagnosis.
+The project includes a clinical classification demonstration in [demo.ipynb](demo.ipynb). It utilizes the [Wisconsin Breast Cancer Diagnostic (WDBC)](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)) dataset ([medical_data.csv](medical_data.csv)) to train a model for malignant vs. benign diagnosis.
+
+### Dataset Overview
+The dataset contains 569 clinical samples, each with features computed from digitized images of a fine needle aspirate (FNA) of a breast mass. The goal is to predict the diagnosis (M = Malignant, B = Benign).
+
+In our demonstration, we utilize three key features:
+- **Radius Mean**: Mean of distances from center to points on the perimeter.
+- **Texture Mean**: Standard deviation of gray-scale values.
+- **Smoothness Mean**: Local variation in radius lengths.
 
 ### Training Workflow
 - **Data Loading**: Custom CSV utility for feature extraction and label formatting.
-- **Model**: An MLP architecture (3 inputs, two hidden layers of 6, 1 output).
-- **Optimization**: The model is trained using **Batch Gradient Descent** over 500 epochs.
-- **Evaluation**: Final model weights are used to run inference on clinical samples, outputting raw predictions and mapped diagnoses.
+- **Model**: An MLP architecture (3 inputs, two hidden layers of 6 nodes, 1 output).
+- **Optimization**: The model is trained using **Batch Gradient Descent** over 500 epochs with a train-test split for unbiased evaluation.
+- **Evaluation**: Final model weights are used to run inference on clinical samples, producing Raw Model Scores mapped to diagnosis labels.
+
+### Model Persistence
+Pre-calculated model weights and z-score normalization parameters (means/stds) are provided in [output_model_weights.json](output_model_weights.json). This allows the system to perform immediate inference without retraining.
+
+## 🚀 CLI tool for Predictions
+
+The project includes a standalone CLI tool, [predict.py](predict.py), for running inference on saved model weights without a notebook environment.
+
+### Usage
+```bash
+python predict.py --radius 15.22 --texture 30.62 --smoothness 0.1048
+```
+- **Inputs**: Requires mean radius, texture, and smoothness values.
+- **Persistence**: Automatically loads pre-trained weights and normalization parameters from [output_model_weights.json](output_model_weights.json).
+
+## 📚 Further Reading
+
+For a deeper dive into the mathematical foundations of this implementation, refer to:
+- **[THEORY.md](THEORY.md)**: Detailed breakdown of the calculus behind the autograd engine, including chain rule derivations, ReLU mechanics, and the backpropagation algorithm.
 
 ## Technical Notes
 - **Loss Function**: Mean Squared Error (MSE).
