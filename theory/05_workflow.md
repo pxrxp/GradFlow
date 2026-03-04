@@ -9,7 +9,7 @@ A typical training iteration follows these concrete steps:
 
 ## 5.2 Loss and Backprop
 1. **Forward**: `predictions = [model(x) for x in features]` (List of Tensors).
-2. **MSE Loss**: $L = \frac{1}{n} \sum (prediction - y_{target})^2$. This produces a single `Value` node.
+2. **MSE Loss**: $L = \frac{1}{n} \sum (prediction - y_{\text{target}})^2$. This produces a single `Value` node.
 3. **Backward**: `loss.backward()` triggers:
    - Topological sort of the entire scalar graph.
    - Recursive call to every node's `_backward()` function.

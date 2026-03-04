@@ -35,10 +35,11 @@ We judge a model by its ability to generalize to unseen data ($\text{Error}_{tes
 
 1.  **Underfitting (High Bias)**: 
     - **Context**: The model is too simple to capture the underlying pattern.
-    - **Math**: $\text{Loss}_{train}$ and $\text{Loss}_{test}$ remain high.
+    - **Math**: $L_\text{train}$ and $L_\text{test}$ remain high
+      
 2.  **Overfitting (High Variance)**: 
     - **Context**: The model "memorizes" noise rather than the signal.
-    - **Math**: $\text{Loss}_{train} \ll \text{Loss}_{test}$.
+    - **Math**: $L_\text{train}\ll L_\text{test}$
 
 <img width="600" alt="Overfitting 1" src="https://github.com/user-attachments/assets/b9bc0c4c-fa85-42bb-9a2c-bdeb888b33b1" />
 
@@ -70,3 +71,4 @@ We transform each feature $x$ using its mean ($\mu$) and standard deviation ($\s
 $$x_{norm} = \frac{x - \mu}{\sigma}$$
 
 This ensures all inputs are centered at 0 with a unit variance, creating a more spherical and easily optimizable loss surface.
+

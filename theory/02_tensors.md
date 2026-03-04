@@ -78,7 +78,10 @@ graph LR
 ## 2.3 Matrix Operations
 
 **Matrix Multiplication ($C = A \times B$):**
-$$\begin{pmatrix} c_{11} & c_{12} \\ c_{21} & c_{22} \end{pmatrix} = \begin{pmatrix} a_{11} & a_{12} \\ a_{21} & a_{22} \end{pmatrix} \begin{pmatrix} b_{11} & b_{12} \\ b_{21} & b_{22} \end{pmatrix}$$
+
+$$
+\pmatrix{ c_{11} & c_{12} \\\ c_{21} & c_{22} } = \pmatrix{ a_{11} & a_{12} \\\ a_{21} & a_{22} } \pmatrix{ b_{11} & b_{12} \\\ b_{21} & b_{22} }
+$$
 
 Each element is computed as: $c_{ij} = \sum_{k} a_{ik} \cdot b_{kj}$
 
@@ -100,3 +103,4 @@ This reduces the high-dimensional tensor to a single `Value` node representing t
 
 > [!NOTE]
 > Backpropagation currently only supports scalar outputs. If the output were a vector or matrix, we would need to compute the Jacobian, which is not yet implemented.
+
