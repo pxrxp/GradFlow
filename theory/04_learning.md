@@ -58,7 +58,11 @@ The method of computing gradients $(\nabla L)$ defines the variant of the algori
 | **Stochastic GD** | Single random example | $\nabla L_i$ | **Noisy**: High variance, avoids local minima. |
 | **Mini-batch GD** | Small random subset | $\frac{1}{b} \sum_{i=1}^b \nabla L_i$ | **Optimal**: Best of both worlds; GPU-efficient. |
 
-<img width="600" alt="Gradient Descent Variants" src="https://cdn.analyticsvidhya.com/wp-content/uploads/2022/07/58182variations_comparison.webp" />
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/73b7fc35-3f19-4144-9751-4b0d92e88222">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/68518240-f13f-4bf8-bd1c-b0746113582d">
+    <img src="https://github.com/user-attachments/assets/68518240-f13f-4bf8-bd1c-b0746113582d" width="600" alt="Variants of gradient descent" />
+</picture>
 
 **Current Implementation**: Our `demo.ipynb` uses **Batch Gradient Descent**. We compute the total loss for all clinical samples and update the weights once per epoch. This is distinct from Stochastic Gradient Descent (SGD), which would update weights after every individual sample.
 
