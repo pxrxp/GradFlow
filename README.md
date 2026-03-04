@@ -29,7 +29,9 @@ A modular hierarchy for constructing deep architectures:
 The project includes a clinical classification demonstration in [demo.ipynb](demo.ipynb). It utilizes the [Wisconsin Breast Cancer Diagnostic (WDBC)](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)) dataset ([medical_data.csv](medical_data.csv)) to train a model for malignant vs. benign diagnosis.
 
 ### Dataset Overview
-The dataset contains 569 clinical samples, each with features computed from digitized images of a fine needle aspirate (FNA) of a breast mass. The goal is to predict the diagnosis (M = Malignant, B = Benign).
+The dataset contains 569 clinical samples, each with features computed from digitized images of a fine needle aspirate (FNA) of a breast mass. They describe the characteristics of cell nuclei. The goal is to predict the diagnosis (M = Malignant, B = Benign).
+
+<img width="1300" height="697" alt="image" src="https://github.com/user-attachments/assets/f2fd6dbb-1fd3-4810-886d-c83636a29824" />
 
 In our demonstration, we utilize three key features:
 - **Radius Mean**: Mean of distances from center to points on the perimeter.
@@ -51,7 +53,14 @@ The project includes a standalone CLI tool, [predict.py](predict.py), for runnin
 
 ### Usage
 ```bash
-python predict.py --radius 15.22 --texture 30.62 --smoothness 0.1048
+$ python predict.py --radius 15.22 --texture 30.62 --smoothness 0.1048
+Model loaded from output_model_weights.json
+
+--- GradFlow Diagnosis Report ---
+Input Features: Radius=15.22, Texture=30.62, Smoothness=0.1048
+Raw Model Score: 0.5831
+Diagnosis: MALIGNANT
+---------------------------------
 ```
 - **Inputs**: Requires mean radius, texture, and smoothness values.
 - **Persistence**: Automatically loads pre-trained weights and normalization parameters from [output_model_weights.json](output_model_weights.json).
