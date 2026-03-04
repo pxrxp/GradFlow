@@ -68,7 +68,7 @@ Diagnosis: MALIGNANT
 ## 📚 Further Reading
 
 For a deeper dive into the mathematical foundations of this implementation, refer to:
-- **[THEORY.md](THEORY.md)**: Detailed breakdown of the calculus behind the autograd engine, including chain rule derivations, ReLU mechanics, and the backpropagation algorithm.
+- **[THEORY.md](THEORY.md)**: A modular guide covering the autograd engine, tensor abstractions, and neural network optimization principles.
 
 ## Technical Notes
 - **Loss Function**: Mean Squared Error (MSE).
