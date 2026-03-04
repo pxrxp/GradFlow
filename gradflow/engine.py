@@ -5,7 +5,7 @@ class Value:
     def __init__(self, data: float, _parents: Tuple["Value", ...] = (), _op: str = ""):
         self.data: float = data
         self.grad: float = 0
-        self._backward: Callable[[], None] = lambda: None
+        self._backward: Callable[[float], None] = lambda grad: None
         self._parents: Set["Value"] = set(_parents)
         self._op: str = _op
 
@@ -13,9 +13,9 @@ class Value:
     def __add__(self, other: Union["Value", float]) -> "Value":
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data + other.data, (self, other), '+')
-        def _backward():
-            self.grad += out.grad
-            other.grad += out.grad
+        def _backward(grad):
+            self.grad += grad
+            other.grad += grad
         out._backward = _backward
         return out
 
@@ -23,9 +23,9 @@ class Value:
     def __mul__(self, other: Union["Value", float]) -> "Value":
         other = other if isinstance(other, Value) else Value(other)
         out = Value(self.data * other.data, (self, other), '*')
-        def _backward():
-            self.grad += other.data * out.grad
-            other.grad += self.data * out.grad
+        def _backward(grad):
+            self.grad += other.data * grad
+            other.grad += self.data * grad
         out._backward = _backward
         return out
 
@@ -33,15 +33,15 @@ class Value:
     def __pow__(self, other: Union[int, float]) -> "Value":
         assert isinstance(other, (int, float))
         out = Value(self.data**other, (self,), f'^{other}')
-        def _backward():
-            self.grad += (other * self.data**(other - 1)) * out.grad
+        def _backward(grad):
+            self.grad += (other * self.data**(other - 1)) * grad
         out._backward = _backward
         return out
 
     def relu(self) -> 'Value':
         out = Value(0 if self.data < 0 else self.data, (self,), 'ReLU')
-        def _backward():
-            self.grad += (out.data > 0) * out.grad
+        def _backward(grad):
+            self.grad += (self.data > 0) * grad
         out._backward = _backward
         return out
 
@@ -61,7 +61,7 @@ class Value:
         build_topo(self)
         self.grad = 1
         for v in reversed(topo):
-            v._backward()
+            v._backward(v.grad)
 
     # -self
     def __neg__(self) -> "Value":
