@@ -27,7 +27,6 @@ The aim is not to replace a framework. It is to understand the mechanics behind 
 - [demo.ipynb](demo.ipynb) — training and evaluation notebook
 - [predict.py](predict.py) — prediction script using saved model weights
 - [output_model_weights.json](output_model_weights.json) — trained weights and normalization values
-- [THEORY.md](THEORY.md) — deeper notes on the math and implementation
 
 ## Core idea: values and gradients
 
@@ -62,19 +61,7 @@ $\frac{\partial z}{\partial x} = y, \quad \frac{\partial z}{\partial y} = x$
 
 This is the basic mechanism behind automatic differentiation.
 
-## Backpropagation
-
-The forward pass computes values. The backward pass propagates gradients from the loss back through the graph.
-
-For a scalar loss $L$ and parameter $\theta$:
-
-$\theta \leftarrow \theta - \eta \frac{\partial L}{\partial \theta}$
-
-This is gradient descent, and it is the core of training.
-
-The project makes this explicit by building a topological ordering of the computation graph and traversing it in reverse.
-
-## Scalar engine
+## Autograd engine
 
 The scalar engine is the foundation.
 
@@ -86,7 +73,21 @@ It implements:
 - recursive backward traversal
 - topological ordering
 
-This is the minimal machinery needed for autodiff. It is intentionally simple enough to read through and reason about.
+The important point is that gradients are not computed symbolically in a separate pass. They are computed locally as the graph is built, and then propagated backward from the final output.
+
+This is the real idea behind autograd: the graph records the operations, and the reverse pass applies the chain rule through that graph.
+
+## Backpropagation
+
+The forward pass computes values. The backward pass propagates gradients from the loss back through the graph.
+
+For a scalar loss $L$ and parameter $\theta$:
+
+$\theta \leftarrow \theta - \eta \frac{\partial L}{\partial \theta}$
+
+This is gradient descent, and it is the core of training.
+
+The project makes this explicit by building a topological ordering of the computation graph and traversing it in reverse.
 
 ## Tensor abstraction
 
@@ -101,6 +102,8 @@ The tensor layer bridges that gap by wrapping higher-dimensional data and routin
 
 This is where the scalar autograd logic meets the structure of a neural network.
 
+The key idea is simple: tensor operations are not different in principle from scalar ones; they are just higher-dimensional containers built on top of scalar differentiation.
+
 ## Neural network modules
 
 The project then builds the usual components of a small network:
@@ -113,7 +116,7 @@ A neuron computes something like:
 
 $y = \sigma(w^\top x + b)$
 
-where $w$ is the weight vector, $b$ is the bias, and $\sigma$ is the activation function.
+where $w$ is the weight vector, $b$ is a bias, and $\sigma$ is the activation function.
 
 The network is assembled explicitly rather than hidden behind a framework. This makes the flow of data and gradients much easier to follow.
 
@@ -126,6 +129,26 @@ flowchart TD
     L --> B[Backward pass]
     B --> U[Parameter update]
 ```
+
+The important conceptual move is that the network is just a composition of scalar operations and parameterized transforms. The graph is what lets gradients travel back through all of that structure.
+
+## Learning principles
+
+The training loop follows the same pattern used in nearly every neural network.
+
+1. compute a prediction
+2. compare it to the target
+3. measure the loss
+4. backpropagate the gradient
+5. update parameters
+
+The loss function used in this project is mean squared error (MSE):
+
+$L = \frac{1}{n} \sum_i (y_i - \hat{y}_i)^2$
+
+The optimizer is gradient descent, and the step size is the learning rate. In practice, the network performance depends strongly on initialization, scaling, and the way gradients are reset between updates.
+
+The project keeps those choices visible and easy to inspect rather than buried in a framework.
 
 ## Example: breast cancer diagnosis
 
@@ -186,12 +209,6 @@ Diagnosis: MALIGNANT
 ---------------------------------
 ```
 
-## Theory and notes
-
-The mathematics behind the implementation is collected in [THEORY.md](THEORY.md). It covers the derivations and training logic in more detail and is intended as a companion to the code.
-
-This project is best understood as a study in the internals of machine learning: not the polished surface, but the actual mechanics underneath it.
-
 ## Summary
 
 GradFlow is a compact implementation of the core ideas behind modern ML:
@@ -203,3 +220,7 @@ GradFlow is a compact implementation of the core ideas behind modern ML:
 - gradient descent
 
 It is small, readable, and built to be understood.
+
+## Final note
+
+This project is a study in the internals of machine learning. The point is not to present a polished framework, but to show how the machinery underneath a neural network actually works.
