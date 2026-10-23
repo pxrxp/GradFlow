@@ -1,201 +1,234 @@
 # GradFlow
 
-GradFlow is a small autograd engine and neural network built from scratch in Python.
+GradFlow is a small autograd engine and neural network built from scratch in Python. It starts with scalar automatic differentiation and builds up to tensors, neural network layers, and a model trained on real data.
 
-It starts from a scalar-valued automatic differentiation system and builds up to a simple Multi-Layer Perceptron (MLP). The project is meant to make the internals of deep learning visible: how values are computed, how gradients flow, and how a model learns from data.
+The goal was to understand what happens behind the scenes when a neural network learns: how gradients are calculated, how they move through a computation graph, and how they update a model's weights.
 
-## Why this project exists
+![Backpropagation animation](https://alexander-schiendorfer.github.io/images/backprop/compnode.gif)
 
-Modern ML frameworks hide most of the machinery behind abstractions. GradFlow keeps it explicit.
+## Why I built this
 
-The project is organized around the core ideas behind training a neural network:
+Most deep learning libraries hide the details of backpropagation behind a few lines of code. I wanted to build those pieces myself and understand how they fit together.
 
-- scalar automatic differentiation
-- computational graphs
-- backpropagation
-- gradient descent
-- tensor-style operations
-- layer-by-layer neural network construction
+GradFlow follows that process step by step:
 
-The aim is not to replace a framework. It is to understand the mechanics behind one.
+- Start with scalar values and their gradients.
+- Build a computation graph from mathematical operations.
+- Use backpropagation to calculate gradients.
+- Extend the scalar engine to tensors.
+- Build a multilayer perceptron (MLP).
+- Train it on real data.
 
 ## Project structure
 
-- [gradflow/engine.py](gradflow/engine.py) — scalar autograd engine
-- [gradflow/tensor.py](gradflow/tensor.py) — tensor abstraction for higher-dimensional operations
-- [gradflow/nn/](gradflow/nn/) — neural network building blocks
-- [demo.ipynb](demo.ipynb) — training and evaluation notebook
-- [predict.py](predict.py) — prediction script using saved model weights
-- [output_model_weights.json](output_model_weights.json) — trained weights and normalization values
-
-## Core idea: values and gradients
-
-The fundamental object is a scalar `Value`.
-
-Each value stores:
-
-- its numerical value
-- its gradient
-- the operation that created it
-- references to its inputs
-
-This gives every computation a dependency graph.
-
-```mermaid
-flowchart LR
-    x --> a
-    y --> a
-    a --> out
-    out --> backward
-    backward --> dx
-    backward --> dy
+```text
+GradFlow/
+├── gradflow/
+│   ├── engine.py          # Scalar values and automatic differentiation
+│   ├── tensor.py          # Tensor operations
+│   └── nn/
+│       ├── neuron.py      # Neuron
+│       ├── layer.py       # Layer of neurons
+│       └── mlp.py         # Multilayer perceptron
+├── demo.ipynb             # Training and experiments
+├── medical_data.csv       # Breast cancer dataset
+├── predict.py             # Prediction from saved weights
+└── output_model_weights.json
 ```
 
-If we compute:
+## Values and gradients
 
-$z = x \cdot y$
+Everything starts with `Value`, the scalar object used by the autograd engine.
 
-then the result knows it came from `x` and `y`, and it also knows:
+A `Value` stores:
 
-$\frac{\partial z}{\partial x} = y, \quad \frac{\partial z}{\partial y} = x$
+- `data`: the numerical value.
+- `grad`: the gradient of the final result with respect to that value.
+- `_prev`: the values that produced it.
+- `_op`: the operation that produced it.
+- `_backward`: the function that propagates gradients to its inputs.
 
-This is the basic mechanism behind automatic differentiation.
+For example:
 
-## Autograd engine
+```python
+a = Value(2.0)
+b = Value(3.0)
+c = a * b
+```
 
-The scalar engine is the foundation.
+The multiplication creates a new `Value` and records its dependencies. The engine can use that information later to work backward through the calculation.
 
-It implements:
-
-- addition, multiplication, subtraction, division
-- activation functions
-- local derivative tracking
-- recursive backward traversal
-- topological ordering
-
-The important point is that gradients are not computed symbolically in a separate pass. They are computed locally as the graph is built, and then propagated backward from the final output.
-
-This is the real idea behind autograd: the graph records the operations, and the reverse pass applies the chain rule through that graph.
-
-## Backpropagation
-
-The forward pass computes values. The backward pass propagates gradients from the loss back through the graph.
-
-For a scalar loss $L$ and parameter $\theta$:
-
-$\theta \leftarrow \theta - \eta \frac{\partial L}{\partial \theta}$
-
-This is gradient descent, and it is the core of training.
-
-The project makes this explicit by building a topological ordering of the computation graph and traversing it in reverse.
-
-## Tensor abstraction
-
-The scalar engine handles single numbers well, but neural networks operate on vectors and matrices.
-
-The tensor layer bridges that gap by wrapping higher-dimensional data and routing operations back into scalar computations. It supports:
-
-- element-wise arithmetic
-- matrix multiplication
-- transposition
-- reductions like `.sum()`
-
-This is where the scalar autograd logic meets the structure of a neural network.
-
-The key idea is simple: tensor operations are not different in principle from scalar ones; they are just higher-dimensional containers built on top of scalar differentiation.
-
-## Neural network modules
-
-The project then builds the usual components of a small network:
-
-- `Neuron`
-- `Layer`
-- `MLP`
-
-A neuron computes something like:
-
-$y = \sigma(w^\top x + b)$
-
-where $w$ is the weight vector, $b$ is a bias, and $\sigma$ is the activation function.
-
-The network is assembled explicitly rather than hidden behind a framework. This makes the flow of data and gradients much easier to follow.
+These relationships form a directed acyclic graph (DAG). Each node represents a value, and each edge represents a dependency between operations.
 
 ```mermaid
 flowchart TD
-    X[Input] --> H1[Hidden layer]
-    H1 --> H2[Hidden layer]
-    H2 --> O[Output]
-    O --> L[Loss]
-    L --> B[Backward pass]
-    B --> U[Parameter update]
+    A["a = 2"] --> C["c = a × b"]
+    B["b = 3"] --> C
+    C --> D["Output"]
 ```
 
-The important conceptual move is that the network is just a composition of scalar operations and parameterized transforms. The graph is what lets gradients travel back through all of that structure.
+## Autograd engine
 
-## Learning principles
+The scalar engine lives in `gradflow/engine.py`.
 
-The training loop follows the same pattern used in nearly every neural network.
+Each supported operation defines how to calculate its forward value and how to propagate gradients backward.
 
-1. compute a prediction
-2. compare it to the target
-3. measure the loss
-4. backpropagate the gradient
-5. update parameters
+For multiplication,
 
-The loss function used in this project is mean squared error (MSE):
+$$c = a \cdot b$$
 
-$L = \frac{1}{n} \sum_i (y_i - \hat{y}_i)^2$
+the local derivatives are
 
-The optimizer is gradient descent, and the step size is the learning rate. In practice, the network performance depends strongly on initialization, scaling, and the way gradients are reset between updates.
+$$\frac{\partial c}{\partial a} = b,\qquad\frac{\partial c}{\partial b} = a$$
 
-The project keeps those choices visible and easy to inspect rather than buried in a framework.
+If the gradient arriving at $c$ is $g$, the inputs receive
 
-## Example: breast cancer diagnosis
+$$\frac{\partial L}{\partial a}\mathrel{+}=g \frac{\partial c}{\partial a}= gb$$
 
-The repository includes a practical classification task using the Wisconsin Breast Cancer Diagnostic dataset.
+$$\frac{\partial L}{\partial b}\mathrel{+}=g \frac{\partial c}{\partial b}= ga$$
 
-The model uses clinical features such as:
+The engine uses the same idea for other supported operations, including addition, subtraction, division, and activation functions.
 
-- radius mean
-- texture mean
-- smoothness mean
+The `backward()` method works roughly like this:
 
-and predicts whether a sample is malignant or benign.
+1. Visit the nodes that contribute to the output.
+2. Arrange them in topological order so dependencies are processed first.
+3. Set the output gradient to `1`, since the derivative of an output with respect to itself is `1`.
+4. Traverse the nodes in reverse topological order and run each node's `_backward()` function.
 
-This keeps the project grounded in a real problem while still staying small and understandable.
+Gradients are accumulated rather than overwritten. This matters when a value contributes to multiple parts of the graph.
 
-## Dataset
+## Backpropagation
 
-The dataset contains 569 samples derived from image-based measurements of breast masses. The features summarize properties of cell nuclei, and the target label indicates the diagnosis.
+Backpropagation applies the chain rule repeatedly to calculate how much each input affects the final output.
 
-## Training workflow
+If $z$ depends on $y$, and $y$ depends on $x$, then
 
-The notebook demonstrates the complete flow:
+$$\frac{\partial z}{\partial x}=\frac{\partial z}{\partial y}\frac{\partial y}{\partial x}$$
 
-1. load data
-2. preprocess inputs
-3. build the network
-4. compute the forward pass
-5. evaluate the loss
-6. backpropagate
-7. update parameters
-8. inspect the result
+The engine calculates local derivatives for individual operations and combines them as it moves backward through the graph.
 
-This is the actual training loop, written in a form that is easy to read.
+For a neural network, the resulting gradients tell us how changing each weight would affect the loss. Training uses those gradients to update the weights in a direction that should reduce the loss.
+
+With gradient descent, a parameter is updated using
+
+$$\theta \leftarrow \theta - \eta \frac{\partial L}{\partial \theta}$$
+
+where $\theta$ is a parameter, $L$ is the loss, and $\eta$ is the learning rate.
+
+## Tensors
+
+Working with scalar values is useful for understanding autograd, but neural networks need vectors and matrices.
+
+`gradflow/tensor.py` builds a tensor abstraction on top of the scalar engine. Tensor elements ultimately use `Value` objects, so tensor operations can use the same gradient calculations.
+
+The tensor implementation supports:
+
+- Element-wise arithmetic.
+- Matrix multiplication using `@`.
+- Transposition using `T()`.
+- Summation using `.sum()`.
+
+For matrices $A$ and $B$, the product $C = AB$ is defined by
+
+$$C_{ij} = \sum_k A_{ik}B_{kj}$$
+
+Each output element is calculated from a row of the first matrix and a column of the second. Because the calculation is built from scalar operations, the autograd engine can track it.
+
+The sum operation reduces a collection of values to a result while preserving the dependencies needed for backpropagation.
+
+## The network
+
+The neural network is built from three components.
+
+**Neuron**
+
+A neuron multiplies its inputs by weights, adds a bias, and passes the result through an activation function:
+
+$$y = f\left(\sum_i w_i x_i + b\right)$$
+
+**Layer**
+
+A layer contains multiple neurons. Each neuron receives the input and produces an output, so the layer returns a collection of activations.
+
+**MLP**
+
+The multilayer perceptron connects layers in sequence. Its parameters are the weights and biases of its neurons, collected so the training loop can calculate gradients and update them.
+
+The classifier uses three input features, two hidden layers with six neurons each, and one output:
+
+```mermaid
+flowchart LR
+    A["3 input features"] --> B["Hidden layer: 6 neurons"]
+    B --> C["Hidden layer: 6 neurons"]
+    C --> D["1 output"]
+```
+
+The output is used as a score for the binary classification task. The model is small enough to follow without having to navigate a large framework.
+
+## Training
+
+The training loop brings the autograd engine and neural network together.
+
+For each epoch, it:
+
+1. Runs the model on the training data.
+2. Calculates the loss by comparing predictions with target labels.
+3. Resets parameter gradients with `model.zero_grad()`.
+4. Calls `backward()` to calculate gradients.
+5. Updates the weights and biases using gradient descent.
+
+The loss function is mean squared error (MSE):
+
+$$L = \frac{1}{N}\sum_{i=1}^{N}(\hat{y}_i-y_i)^2$$
+
+Here, $\hat{y}_i$ is the model's prediction, $y_i$ is the target, and $N$ is the number of examples included in the loss calculation.
+
+The notebook uses batch gradient descent, where gradients are calculated over the training batch before parameters are updated. Weight initialization, the learning rate, and feature normalization all affect training.
+
+The features are normalized using statistics calculated from the training data. The notebook runs training for 500 epochs and splits the dataset into training and test sets to evaluate the model on examples it did not train on.
+
+## Breast cancer classification
+
+<img width="1300" height="697" alt="image" src="https://github.com/user-attachments/assets/f02c1c0d-35f9-4b8e-a282-d243b14609b9" />
+
+The example uses the Wisconsin Breast Cancer Diagnostic dataset. It contains measurements extracted from digitized images of fine needle aspirates (FNA) of breast masses. Each sample has a diagnosis label: benign or malignant.
+
+The model uses three features:
+
+- **Mean radius** — the average distance from the center to points on the cell nucleus perimeter.
+- **Mean texture** — variation in grayscale intensity.
+- **Mean smoothness** — local variation in radius lengths.
+
+These are a small subset of the measurements available in the original dataset. Using three inputs keeps the example manageable and makes the path from input features to output easier to follow.
+
+Dataset: [UCI Machine Learning Repository — Breast Cancer Wisconsin (Diagnostic)](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic).
+
+This is an educational project, not a clinically validated diagnostic tool. Its predictions should not be used to make medical decisions.
 
 ## Running the notebook
 
+Clone the repository:
+
 ```bash
+git clone https://github.com/pxrxp/GradFlow.git
+cd GradFlow
 jupyter notebook demo.ipynb
 ```
 
-## Quick prediction
+Run the notebook cells in order to inspect the data, build the model, train it, and evaluate the results.
 
-A saved model can also be used directly from the command line:
+## Making predictions
+
+After training, the project saves the model weights and normalization statistics needed to prepare new input data. These are stored in `output_model_weights.json` for use by `predict.py`.
+
+Run the prediction script with:
 
 ```bash
 python predict.py --radius 15.22 --texture 30.62 --smoothness 0.1048
 ```
+
+The script loads the saved parameters, applies the same feature normalization used during training, and runs the input through the network.
 
 Example output:
 
@@ -209,18 +242,14 @@ Diagnosis: MALIGNANT
 ---------------------------------
 ```
 
-## Summary
+The output depends on the saved weights and the supplied input. The score is the model's output, not a calibrated probability unless the model and training procedure have been specifically designed and validated for that purpose.
 
-GradFlow is a compact implementation of the core ideas behind modern ML:
+## My notes
 
-- autodiff
-- graph-based backpropagation
-- tensor operations
-- neural network construction
-- gradient descent
+I wrote these notes while building GradFlow. They cover the individual parts of the implementation in more detail.
 
-It is small, readable, and built to be understood.
-
-## Final note
-
-This project is a study in the internals of machine learning. The point is not to present a polished framework, but to show how the machinery underneath a neural network actually works.
+- [The Autograd Engine](theory/01_autograd.md) — `Value`, computation graphs, the chain rule, and topological sorting.
+- [Tensor Abstraction](theory/02_tensors.md) — tensor operations, matrix multiplication, transposition, and reductions.
+- [Neural Network Components](theory/03_nn_components.md) — neurons, layers, and MLPs.
+- [Learning Principles](theory/04_learning.md) — loss functions, gradient descent, learning rates, and normalization.
+- [Training Workflow](theory/05_workflow.md) — the training process in `demo.ipynb`.
