@@ -248,8 +248,17 @@ The output depends on the saved weights and the supplied input. The score is the
 
 I wrote these notes while building GradFlow. They cover the individual parts of the implementation in more detail.
 
-- [The Autograd Engine](theory/01_autograd.md) — `Value`, computation graphs, the chain rule, and topological sorting.
-- [Tensor Abstraction](theory/02_tensors.md) — tensor operations, matrix multiplication, transposition, and reductions.
-- [Neural Network Components](theory/03_nn_components.md) — neurons, layers, and MLPs.
-- [Learning Principles](theory/04_learning.md) — loss functions, gradient descent, learning rates, and normalization.
-- [Training Workflow](theory/05_workflow.md) — the training process in `demo.ipynb`.
+### [The Autograd Engine](theory/01_autograd.md)
+`Value`, computation graphs, the chain rule, and topological sorting.
+
+### [Tensor Abstraction](theory/02_tensors.md)
+Tensor operations, matrix multiplication, transposition, and reductions.
+
+### [Neural Network Components](theory/03_nn_components.md)
+Neurons, layers, and MLPs.
+
+### [Learning Principles](theory/04_learning.md)
+Loss functions, gradient descent, learning rates, and normalization.
+
+### [Training Workflow](theory/05_workflow.md)
+The training process in `demo.ipynb`.
