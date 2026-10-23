@@ -1,59 +1,182 @@
-# 🧠 GradFlow
+# GradFlow
 
-GradFlow is a from-scratch implementation of a deep learning stack, progressing from a base scalar-valued autograd engine to a Multi-Layer Perceptron (MLP) architecture. The project demonstrates the transition from fundamental calculus and automatic differentiation to practical model training on clinical data.
+GradFlow is a small autograd engine and neural network built from scratch in Python.
 
-## Implementation Overview
+It starts from a scalar-valued automatic differentiation system and builds up to a simple Multi-Layer Perceptron (MLP). The project is meant to make the internals of deep learning visible: how values are computed, how gradients flow, and how a model learns from data.
 
-The repository is structured to show the building blocks of a neural network framework:
+## Why this project exists
 
-### 1. Scalar Engine ([engine.py](gradflow/engine.py))
-The foundation of the project is the `Value` class, which handles the core mechanics of automatic differentiation. 
-- **Computational Graph**: Every mathematical operation builds a Directed Acyclic Graph (DAG) of `Value` nodes.
-- **Backpropagation**: Gradients are computed using the multivariate chain rule, implemented through recursive `_backward` closures.
-- **Topological Order**: A custom sorting algorithm ensures that gradients flow correctly from the output back to the leaf nodes.
+Modern ML frameworks hide most of the machinery behind abstractions. GradFlow keeps it explicit.
 
-### 2. Tensor Abstraction ([tensor.py](gradflow/tensor.py))
-To handle multi-dimensional data, a recursive `Tensor` wrapper was implemented to bridge the gap between matrix math and scalar-level tracking.
-- **Recursive Mapping**: Operations are dispatched through the tensor grid, mapping matrix-level functions down to individual `Value` nodes.
-- **Matrix Operations**: Includes support for matrix multiplication (`@`), transposition (`T()`), and element-wise arithmetic.
-- **Auto-differentiation Boundary**: The `.sum()` reduction collapses high-dimensional tensors into a root `Value` node for starting the backpropagation pass.
+The project is organized around the core ideas behind training a neural network:
 
-### 3. Neural Network Modules ([nn/](gradflow/nn/))
-A modular hierarchy for constructing deep architectures:
-- **Neuron**: Individual Perceptron logic implementing $activation(\sum w_i x_i + b)$.
-- **Layer**: Manages parallel neuron execution.
-- **MLP**: Organizes layers into a sequential architecture with parameter collection across the hierarchy.
+- scalar automatic differentiation
+- computational graphs
+- backpropagation
+- gradient descent
+- tensor-style operations
+- layer-by-layer neural network construction
 
-## Practical Application: Breast Cancer Diagnosis
+The aim is not to replace a framework. It is to understand the mechanics behind one.
 
-The project includes a clinical classification demonstration in [demo.ipynb](demo.ipynb). It utilizes the [Wisconsin Breast Cancer Diagnostic (WDBC)](https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)) dataset ([medical_data.csv](medical_data.csv)) to train a model for malignant vs. benign diagnosis.
+## Project structure
 
-### Dataset Overview
-The dataset contains 569 clinical samples, each with features computed from digitized images of a fine needle aspirate (FNA) of a breast mass. They describe the characteristics of cell nuclei. The goal is to predict the diagnosis (M = Malignant, B = Benign).
+- [gradflow/engine.py](gradflow/engine.py) — scalar autograd engine
+- [gradflow/tensor.py](gradflow/tensor.py) — tensor abstraction for higher-dimensional operations
+- [gradflow/nn/](gradflow/nn/) — neural network building blocks
+- [demo.ipynb](demo.ipynb) — training and evaluation notebook
+- [predict.py](predict.py) — prediction script using saved model weights
+- [output_model_weights.json](output_model_weights.json) — trained weights and normalization values
+- [THEORY.md](THEORY.md) — deeper notes on the math and implementation
 
-<img width="1300" height="697" alt="image" src="https://github.com/user-attachments/assets/f2fd6dbb-1fd3-4810-886d-c83636a29824" />
+## Core idea: values and gradients
 
-In our demonstration, we utilize three key features:
-- **Radius Mean**: Mean of distances from center to points on the perimeter.
-- **Texture Mean**: Standard deviation of gray-scale values.
-- **Smoothness Mean**: Local variation in radius lengths.
+The fundamental object is a scalar `Value`.
 
-### Training Workflow
-- **Data Loading**: Custom CSV utility for feature extraction and label formatting.
-- **Model**: An MLP architecture (3 inputs, two hidden layers of 6 nodes, 1 output).
-- **Optimization**: The model is trained using **Batch Gradient Descent** over 500 epochs with a train-test split for unbiased evaluation.
-- **Evaluation**: Final model weights are used to run inference on clinical samples, producing Raw Model Scores mapped to diagnosis labels.
+Each value stores:
 
-### Model Persistence
-Pre-calculated model weights and z-score normalization parameters (means/stds) are provided in [output_model_weights.json](output_model_weights.json). This allows the system to perform immediate inference without retraining.
+- its numerical value
+- its gradient
+- the operation that created it
+- references to its inputs
 
-## 🚀 CLI tool for Predictions
+This gives every computation a dependency graph.
 
-The project includes a standalone CLI tool, [predict.py](predict.py), for running inference on saved model weights without a notebook environment.
+```mermaid
+flowchart LR
+    x --> a
+    y --> a
+    a --> out
+    out --> backward
+    backward --> dx
+    backward --> dy
+```
 
-### Usage
+If we compute:
+
+$z = x \cdot y$
+
+then the result knows it came from `x` and `y`, and it also knows:
+
+$\frac{\partial z}{\partial x} = y, \quad \frac{\partial z}{\partial y} = x$
+
+This is the basic mechanism behind automatic differentiation.
+
+## Backpropagation
+
+The forward pass computes values. The backward pass propagates gradients from the loss back through the graph.
+
+For a scalar loss $L$ and parameter $\theta$:
+
+$\theta \leftarrow \theta - \eta \frac{\partial L}{\partial \theta}$
+
+This is gradient descent, and it is the core of training.
+
+The project makes this explicit by building a topological ordering of the computation graph and traversing it in reverse.
+
+## Scalar engine
+
+The scalar engine is the foundation.
+
+It implements:
+
+- addition, multiplication, subtraction, division
+- activation functions
+- local derivative tracking
+- recursive backward traversal
+- topological ordering
+
+This is the minimal machinery needed for autodiff. It is intentionally simple enough to read through and reason about.
+
+## Tensor abstraction
+
+The scalar engine handles single numbers well, but neural networks operate on vectors and matrices.
+
+The tensor layer bridges that gap by wrapping higher-dimensional data and routing operations back into scalar computations. It supports:
+
+- element-wise arithmetic
+- matrix multiplication
+- transposition
+- reductions like `.sum()`
+
+This is where the scalar autograd logic meets the structure of a neural network.
+
+## Neural network modules
+
+The project then builds the usual components of a small network:
+
+- `Neuron`
+- `Layer`
+- `MLP`
+
+A neuron computes something like:
+
+$y = \sigma(w^\top x + b)$
+
+where $w$ is the weight vector, $b$ is the bias, and $\sigma$ is the activation function.
+
+The network is assembled explicitly rather than hidden behind a framework. This makes the flow of data and gradients much easier to follow.
+
+```mermaid
+flowchart TD
+    X[Input] --> H1[Hidden layer]
+    H1 --> H2[Hidden layer]
+    H2 --> O[Output]
+    O --> L[Loss]
+    L --> B[Backward pass]
+    B --> U[Parameter update]
+```
+
+## Example: breast cancer diagnosis
+
+The repository includes a practical classification task using the Wisconsin Breast Cancer Diagnostic dataset.
+
+The model uses clinical features such as:
+
+- radius mean
+- texture mean
+- smoothness mean
+
+and predicts whether a sample is malignant or benign.
+
+This keeps the project grounded in a real problem while still staying small and understandable.
+
+## Dataset
+
+The dataset contains 569 samples derived from image-based measurements of breast masses. The features summarize properties of cell nuclei, and the target label indicates the diagnosis.
+
+## Training workflow
+
+The notebook demonstrates the complete flow:
+
+1. load data
+2. preprocess inputs
+3. build the network
+4. compute the forward pass
+5. evaluate the loss
+6. backpropagate
+7. update parameters
+8. inspect the result
+
+This is the actual training loop, written in a form that is easy to read.
+
+## Running the notebook
+
 ```bash
-$ python predict.py --radius 15.22 --texture 30.62 --smoothness 0.1048
+jupyter notebook demo.ipynb
+```
+
+## Quick prediction
+
+A saved model can also be used directly from the command line:
+
+```bash
+python predict.py --radius 15.22 --texture 30.62 --smoothness 0.1048
+```
+
+Example output:
+
+```text
 Model loaded from output_model_weights.json
 
 --- GradFlow Diagnosis Report ---
@@ -62,18 +185,21 @@ Raw Model Score: 0.5831
 Diagnosis: MALIGNANT
 ---------------------------------
 ```
-- **Inputs**: Requires mean radius, texture, and smoothness values.
-- **Persistence**: Automatically loads pre-trained weights and normalization parameters from [output_model_weights.json](output_model_weights.json).
 
-## 📚 Further Reading
+## Theory and notes
 
-For a deeper dive into the mathematical foundations of this implementation, refer to:
-- **[THEORY.md](THEORY.md)**: A modular guide covering the autograd engine, tensor abstractions, and neural network optimization principles.
+The mathematics behind the implementation is collected in [THEORY.md](THEORY.md). It covers the derivations and training logic in more detail and is intended as a companion to the code.
 
-## Technical Notes
-- **Loss Function**: Mean Squared Error (MSE).
-- **Initialization**: Gaussian scaling is used for weight initialization to prevent dead neurons.
-- **Gradient Reset**: Explicit `model.zero_grad()` calls at the start of each epoch to prevent illegal gradient accumulation.
+This project is best understood as a study in the internals of machine learning: not the polished surface, but the actual mechanics underneath it.
 
----
-*Developed as a learning project to explore the inner workings of automatic differentiation and neural network optimization.*
+## Summary
+
+GradFlow is a compact implementation of the core ideas behind modern ML:
+
+- autodiff
+- graph-based backpropagation
+- tensor operations
+- neural network construction
+- gradient descent
+
+It is small, readable, and built to be understood.
